@@ -1,0 +1,107 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Provider {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String?
+  name          String
+  businessName  String
+  timezone      String   @default("America/New_York")
+  slug          String   @unique   // used in public booking URL
+  location      String?
+  industry      String?
+  createdAt     DateTime @default(now())
+
+  services      Service[]
+  availability  Availability[]
+  timeOff       TimeOff[]
+  clients       Client[]
+  appointments  Appointment[]
+}
+
+model Service {
+  id           String   @id @default(cuid())
+  providerId   String
+  provider     Provider @relation(fields: [providerId], references: [id])
+  name         String
+  durationMins Int
+  priceCents   Int
+  depositCents Int      @default(0)   // 0 = full payment upfront, else partial deposit
+  isActive     Boolean  @default(true)
+
+  appointments Appointment[]
+}
+
+model Availability {
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  dayOfWeek  Int      // 0 = Sunday ... 6 = Saturday
+  startTime  String   // "09:00"
+  endTime    String   // "17:00"
+
+  @@index([providerId, dayOfWeek])
+}
+
+model TimeOff {
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  startsAt   DateTime
+  endsAt     DateTime
+  reason     String?
+
+  @@index([providerId, startsAt, endsAt])
+}
+
+model Client {
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  name       String
+  email      String
+  phone      String
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  appointments Appointment[]
+
+  @@index([providerId])
+}
+
+model Appointment {
+  id            String   @id @default(cuid())
+  providerId    String
+  provider      Provider @relation(fields: [providerId], references: [id])
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  serviceId     String
+  service       Service  @relation(fields: [serviceId], references: [id])
+  startsAt      DateTime
+  endsAt        DateTime
+  status        String   @default("confirmed") // confirmed | cancelled | completed | no_show
+  isRecurring   Boolean  @default(false)
+  recurrenceRule String? // e.g. "WEEKLY" — keep simple for v1
+  stripePaymentIntentId String?
+  amountPaidCents Int    @default(0)
+  reminder24hSent Boolean @default(false)
+  reminder1hSent  Boolean @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([providerId, status, startsAt])
+  @@index([providerId, startsAt, endsAt])
+  @@index([status, reminder24hSent, startsAt])
+  @@index([status, reminder1hSent, startsAt])
+}
