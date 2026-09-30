@@ -26,7 +26,7 @@ export const metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const provider = await requireProvider();
   const now = new Date();
-  const { todayStart, todayEnd } = providerScheduleWindow(now, provider.timezone);
+  const { todayStart } = providerScheduleWindow(now, provider.timezone);
   const paidWindow = revenueWindow(now, provider.timezone, 365);
   const hour = Number(formatInTimeZone(now, provider.timezone, "H"));
   const daysLeft = trialDaysLeft(provider.createdAt, now);
